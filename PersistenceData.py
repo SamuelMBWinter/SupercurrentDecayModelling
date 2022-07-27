@@ -23,6 +23,12 @@ def Exponential(x, A, k):
     """
     return A * np.exp(k * x)
 
+def SecondOrderDecay(x, A, k):
+    """
+    Solution to dV/dx = kV^{2}, where t_0 = 0, and V(0) = A
+    """
+    return A / (1 - A * k * x)
+
 def Biexponential(x, A, k1, B, k2):
     """
     The sum of two exponentials:
@@ -30,6 +36,16 @@ def Biexponential(x, A, k1, B, k2):
     The settling is modelled as an exponenital decay, alongside the decay of the supercurrent.
     """
     return Exponential(x, A, k1) + Exponential(x, B, k2)
+
+def Triexponential(x, A, k1, B, k2, C, k3):
+    return Exponential(x, A, k1) + Exponential(x, B, k2) + Exponential(x, C, k3)
+
+def CombinationDecay(x, A, k1, B, k2):
+    """
+    the sum of first and senind order decay.
+    """
+    return SecondOrderDecay(x, A, k1) + Exponential(x, B, k2)
+
 
 def FullDataCurve(t, t0, a, t1, b, t2, A, k1, B, k2):
     """
@@ -46,23 +62,23 @@ def FullDataCurve(t, t0, a, t1, b, t2, A, k1, B, k2):
 
 def main():
 
-    df = pd.read_csv("Measurement 18 (2212 v4 minimal_bend SUCCESS ).txt",sep='\t',header=(0))
+    df = pd.read_csv("data/Measurement 23 (2212 Gen2 v1).txt",sep='\t',header=(0))
 
     # defing the time and hall voltage arrays
-    ts = df["Seconds"][1271:]
-    ts = (ts - np.min(ts)) / (60**2 *24)            # Sets time to start at zero
-    Vs = df["Hall Voltage"][1271:]
+    ts = df["Steps"][1475:124269]#[1271:144895]
+    ts = (ts - np.min(ts))# / (60**2 *24)            # Sets time to start at zero
+    Vs = df["Hall Voltage"][1475:124269] #[1271:144895]
 
     # Inital guesses, biexponential fits are sensitive, so resonable guesses are required. 
-    inits = (0.06, -10**(-3), 2.5, -10**(-1))
-    popt, pcov = curve_fit(Biexponential, ts, Vs, p0=inits, maxfev=3600)
+    inits = (0.06, -10**(-4), 2.5, -10**(-1), 0.5, -10**(-2))
+    popt, pcov = curve_fit(Triexponential, ts, Vs, p0=inits, maxfev=10000)
 
-    # Printing the Data: TODO: Formatting
+    # Printing the Data: TODO: Formatting - use a conditional to seperate the pairs.
     print(popt)
 
     # Plotting the data
     plt.plot(ts, Vs, label="Data")
-    plt.plot(ts, Biexponential(ts, *popt), label="Fit")
+    plt.plot(ts, Triexponential(ts, *popt), label="Fit")
     plt.xlabel("Time / days")
     plt.ylabel("Hall Voltage / mV")
     plt.legend()
